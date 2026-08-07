@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Install mkosi
+        uses: systemd/mkosi@f7401bdc8d23486bb346790dc92508381a062f3b
+
+      - name: Build image
+        run: mkosi -d fedora -r 44 -p systemd -p util-linux -p dnf5 --architecture=x86-64
+
+      - name: Delete symbolic links
+        run: find mkosi.output -maxdepth 1 -type l -delete
+
+      - name: Generate checksum file
+        run: for f in *; do sha256sum $f > $f.sha256; done
+        working-directory: mkosi.output
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target.distro }}-${{ matrix.target.release }}_${{ matrix.arch }}
+          path: mkosi.output/*
+          retention-days: 2
